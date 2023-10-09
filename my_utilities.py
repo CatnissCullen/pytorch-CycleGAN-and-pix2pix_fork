@@ -25,6 +25,16 @@ import torchvision.transforms as transforms
 from torch.utils.data import ConcatDataset, DataLoader, Subset, Dataset, TensorDataset, random_split
 from torchvision.datasets import DatasetFolder, VisionDataset
 
+"""Set Device"""
+
+
+def register_device(gpu_no=0):
+    if torch.cuda.is_available():
+        torch.cuda.set_device(gpu_no)
+        return torch.device("cuda")
+    else: return torch.device("cpu")
+
+
 """Preparing Data"""
 
 
