@@ -25,17 +25,50 @@ import torchvision.transforms as transforms
 from torch.utils.data import ConcatDataset, DataLoader, Subset, Dataset, TensorDataset, random_split
 from torchvision.datasets import DatasetFolder, VisionDataset
 
-"""Set Device"""
+""" Set Device """
 
 
 def register_device(gpu_no=0):
     if torch.cuda.is_available():
         torch.cuda.set_device(gpu_no)
         return torch.device("cuda")
-    else: return torch.device("cpu")
+    else:
+        return torch.device("cpu")
+    # TODO: add option to use multiple gpu??
 
 
-"""Preparing Data"""
+""" Configuration """
+
+
+def print_config(device, model_load, model_name, translate_dirct,hp):
+    print(
+        "============CONFIGURATIONS============",
+        "Device = "+str(device)+'',
+        "Model is loaded "+str(model_load),
+        "Model = "+str(model_name),
+        "Translation Dirct. = "+str(translate_dirct),
+        "--------------------------------------",
+        "Transforms Opt. = "+str(hp['trans']),
+        "Img. Scale Size = "+str(hp['scale_size']),
+        "Img. Crop Size = "+str(hp['crop_size']),
+        "Flipped = "+str(hp['flip']),
+        "--------------------------------------",
+        "G's Arch. = "+str(hp['G_arch']),
+        "D's Arch. = "+str(hp['D_arch']),
+        "num. of D's layers = "+str(hp['D_layers']),
+        "num. of Input's Channels = "+str(hp['in_chan']),
+        "num. of Output's Channels = "+str(hp['out_chan']),
+        "--------------------------------------",
+        "Batch Size = "+str(hp['batch_size']),
+        "Normalization = "+str(hp['norm_type']),
+        "G's Dropout = "+str(hp['G_dropout']),
+        "D's Dropout = " + str(hp['D_dropout']),
+        "======================================",
+        sep='\n'
+    )
+
+
+""" Preparing Data """
 
 
 # CSV reader
