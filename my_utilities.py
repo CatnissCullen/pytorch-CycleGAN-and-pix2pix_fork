@@ -106,13 +106,13 @@ def split_photo_facade(img):
 	ww = int(w / 2)
 	photo = img.crop((0, 0, ww, h))
 	facade = img.crop((ww, 0, w, h))
-	return photo, facade
+	return photo, facade  # return pillow Images
 
 
 # Image Transformer
-def my_transforms(sample, opt):
+def my_transforms(img, opt):
 	"""
-	:param sample: an img. sample
+	:param img: a pillow Image sample
 	:param opt: {
 		'trans': 'scale & crop', # | crop | scale width | scale width & crop
 		'scale_size': 286, # !!! in TEST TIME set to crop_size !!!
@@ -123,53 +123,58 @@ def my_transforms(sample, opt):
 	"""
 	trans, scale_size, crop_size = opt['trans'], opt['scale_size'], opt['crop_size']
 	if trans == 'scale & crop':
-		sample = trans_func.resize(sample, [scale_size, scale_size])
+		img = trans_func.resize(img, [scale_size, scale_size])
 	elif 'width' in trans:
-		w, h = sample.size
+		w, h = img.size
 		if w == scale_size and h >= crop_size:
 			pass
 		else:  # w/h = scale_size/h' & remain large enough to crop
 			ww, hh = scale_size, int(max(scale_size * h / w, crop_size))
 			w, h = ww, hh
-			sample = trans_func.resize(sample, [w, h])
+			img = trans_func.resize(img, [w, h])
 
 	if 'crop' in trans:
-		w, h = sample.size
+		w, h = img.size
 		x = torch.randint(0, w - crop_size + 1, size=(1,)).item()
 		y = torch.randint(0, h - crop_size + 1, size=(1,)).item()
-		sample = trans_func.crop(sample, y, x, crop_size, crop_size)
+		img = trans_func.crop(img, y, x, crop_size, crop_size)
 
 	if opt['flip']:
-		sample = trans_func.hflip(sample)
+		img = trans_func.hflip(img)
 
-	return sample
+	return img  # return pillow Image
 
 
 class Imageset(Dataset):
-	def __init__(self, trans_opt, imgs: list):
-		# Initialize with path, customized transforms & a maybe-specified images list
+	def __init__(self, trans_opt, img_files: list):
+		# Initialize with customized transforms & an img. files list
 		super().__init__()
 		self.trans_opt = trans_opt
-		self.imgs = imgs  # left: photo; right: facade
+		self.img_files = img_files  # left: photo; right: facade
 
 	def __len__(self):
-		return len(self.imgs)
+		return len(self.img_files)
 
-	def __getitem__(self, idx):
-		img = self.imgs[idx]
-		sample = Image.open(img).convert('RGB')  # using PIL.Image.open to fetch the actual image
-		photo, facade = split_photo_facade(sample)  # split sample to photo & facade
+	def preproc(self, img_file):
+		sample = Image.open(img_file).convert('RGB')  # create pillow Image sample from raw image file
+		photo, facade = split_photo_facade(sample)  # split sample to photo & facade Images
 		photo = my_transforms(photo, self.trans_opt)
 		facade = my_transforms(facade, self.trans_opt)
-		return photo, facade, img
+		return photo, facade, sample  # return pillow Images
+
+	def __getitem__(self, idx):
+		img_file = self.img_files[idx]
+		photo, facade, _ = self.preproc(img_file)
+		return trans_func.to_tensor(photo), trans_func.to_tensor(facade)  # return torch tensors of a data point
 
 	def check_preproc(self, idx):
-		photo, facades, img = self.__getitem__(idx)
+		img_file = self.img_files[idx]
+		photo, facades, sample = self.preproc(img_file)
 		plt.figure(1)
 		plt.subplot(121)
 		plt.imshow(photo)
 		plt.subplot(122)
 		plt.imshow(facades)
 		plt.show()
-		plt.imshow(Image.open(img))
+		plt.imshow(sample)
 		plt.show()
