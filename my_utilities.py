@@ -23,6 +23,7 @@ import torch.nn as nn
 import torchvision.transforms.functional as trans_func
 from torch.utils.data import ConcatDataset, DataLoader, Subset, Dataset, TensorDataset, random_split
 from torchvision.datasets import DatasetFolder, VisionDataset
+from torchvision.utils import save_image
 
 """ Set Device """
 
@@ -53,12 +54,10 @@ def assure_reproduce(seed):
 """ Configuration """
 
 
-def print_config(device, model_load, model_save, model_name, translate_dirct, opt):
+def print_config(device, model_name, translate_dirct, opt):
 	print(
 		"============CONFIGURATIONS============",
 		"Device = " + str(device),
-		"Model is loaded " + str(model_load),
-		"Model is saved " + str(model_save),
 		"Model = " + str(model_name),
 		"Translation Dirct. = " + str(translate_dirct),
 		"--------------------------------------",
@@ -72,23 +71,24 @@ def print_config(device, model_load, model_save, model_name, translate_dirct, op
 		"num. of D's layers = " + str(opt['D_layers']),
 		"num. of Input's Channels = " + str(opt['in_chan']),
 		"num. of Output's Channels = " + str(opt['out_chan']),
+		"simple distribution input:",
+		"mean = " + str(opt['W_init_mean']),
+		"dev = " + str(opt['W_init_dev']),
 		"--------------------------------------",
 		"Batch Size = " + str(opt['batch_size']),
 		"Normalization = " + str(opt['norm_type']),
 		"G's Dropout = " + str(opt['G_dropout']),
-		"D's Dropout = " + str(opt['D_dropout']),
 		"--------------------------------------",
 		"Loss Mode = " + str(opt['loss_mode']),
 		"L1's Lambda = " + str(opt['L1_lambda']),
 		"Beta1 = " + str(opt['beta1']),
 		"Initial Learning-rate = " + str(opt['lr']),
-		"Decay Mode = " + str(opt['lr_dec_mode']),
 		"======================================",
 		sep='\n'
 	)
 
 
-""" Preparing Data """
+""" Prepare Data """
 
 
 # Images reader
@@ -145,6 +145,7 @@ def my_transforms(img, opt):
 	return img  # return pillow Image
 
 
+# Customize Dataset subclass
 class Imageset(Dataset):
 	def __init__(self, trans_opt, img_files: list):
 		# Initialize with customized transforms & an img. files list
@@ -178,3 +179,37 @@ class Imageset(Dataset):
 		plt.show()
 		plt.imshow(sample)
 		plt.show()
+
+
+def sub_batch(batch, dirct, batch_type):
+	sub_batch = {
+		'cond': batch[1] if dirct == 'facade->photo' else batch[0],
+		'real': batch[0] if dirct == 'facade->photo' else batch[1]
+	}
+	return sub_batch[batch_type]
+
+
+# save generated batch regularly
+def save_gen_chk_point(G, batch, dirct, save_dir, mode, idx, device):
+	cond_batch = sub_batch(batch, dirct, 'cond').to(device)
+	real_batch = sub_batch(batch, dirct, 'real').to(device)
+	gen_batch = G(cond_batch)
+	save_image(torch.cat((cond_batch, gen_batch, real_batch), dim=3), save_dir + mode + "result" + str(idx) + ".png")
+
+
+""" Save Model """
+
+
+def save_model_chk_point(save_dir, e, D, G, D_loss, G_loss, D_optim, G_optim):
+	torch.save({
+		'epoch': e,
+		'model_state': D.state_dict(),
+		'optimizer_state': D_optim.state_dict(),
+		'loss': D_loss,
+	}, save_dir + "epoch" + str(e) + "_D.pth")
+	torch.save({
+		'epoch': e,
+		'model_state': G.state_dict(),
+		'optimizer_state': G_optim.state_dict(),
+		'loss': G_loss,
+	}, save_dir + "epoch" + str(e) + "_G.pth")
