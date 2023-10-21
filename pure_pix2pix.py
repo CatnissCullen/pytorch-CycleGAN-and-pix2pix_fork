@@ -24,7 +24,6 @@ from torchvision.datasets import DatasetFolder, VisionDataset
 # my_utilities
 import my_utilities
 
-# %%
 """ For Display """
 
 # plt.style.use(r'C:\Users\chael\.matplotlib\violet.mplstyle')
